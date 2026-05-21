@@ -10,96 +10,185 @@ import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
     <head>
         <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
         <style>
-            .terminal-box {
-                background-color: #0c0c0c;
-                color: #cccccc;
-                font-family: 'Consolas', 'Courier New', monospace;
-                padding: 20px;
-                border-radius: 8px;
-                min-height: 350px;
-                font-size: 14px;
+            .game-container {
+                background-color: #1a1a1a;
+                color: #e0e0e0;
+                padding: 30px;
+                border-radius: 12px;
                 margin-top: 2rem;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-                overflow-y: auto;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+                text-align: center;
+                font-family: system-ui, -apple-system, sans-serif;
             }
-            .prompt-line { display: flex; }
-            .prompt { margin-right: 8px; }
-            .term-input {
-                background: transparent;
+            .dashboard {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 20px;
+                font-size: 1.2rem;
+                font-weight: bold;
+                background: #2a2a2a;
+                padding: 15px;
+                border-radius: 8px;
+                border: 1px solid #333;
+            }
+            .stat { color: #4ade80; }
+            
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+            
+            .crop-patch {
+                aspect-ratio: 1;
+                background-color: #2d3748;
+                border: 2px solid #4a5568;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 3rem;
+                cursor: crosshair;
+                transition: all 0.1s;
+                user-select: none;
+            }
+            
+            .crop-patch:active {
+                transform: scale(0.95);
+                background-color: #4a5568;
+            }
+
+            .pest-active {
+                background-color: #742a2a;
+                border-color: #fc8181;
+            }
+
+            button {
+                margin-top: 25px;
+                padding: 12px 24px;
+                font-size: 1.1rem;
+                background-color: #4ade80;
+                color: #1a1a1a;
                 border: none;
-                color: transparent; /* Hides typing */
-                font-family: inherit;
-                font-size: inherit;
-                outline: none;
-                flex-grow: 1;
+                border-radius: 6px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: background-color 0.2s;
             }
-            .term-input:focus { outline: none; }
-            .custom-msg { color: #f44747; margin-top: 10px; margin-bottom: 10px; }
+            
+            button:hover { background-color: #22c55e; }
+            button:disabled { background-color: #4b5563; cursor: not-allowed; }
         </style>
     </head>
     <body>
         <Header />
         <main>
-            <h1>🧑‍🚀 System Gateway</h1>
+            <h1>🚁 Sensor Calibration PoC</h1>
             <p>
-                Unauthorized access is strictly prohibited. Please authenticate to proceed to the administrative control panel.
+                Test the autonomous targeting array. Click the pests (🐛) as soon as they appear in the crop grid to register a successful drone scan. You have 30 seconds.
             </p>
             
-            <div class="terminal-box" id="terminal-wrapper">
-                <div id="terminal-output">
-                    <div>SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.1</div>
+            <div class="game-container">
+                <div class="dashboard">
+                    <div>Pests Scanned: <span id="score" class="stat">0</span></div>
+                    <div>Uplink Time: <span id="time-left" class="stat">30</span>s</div>
                 </div>
-                <div class="prompt-line" id="input-container">
-                    <span class="prompt">root@core-gateway's password:</span>
-                    <input type="password" id="password-input" class="term-input" autofocus autocomplete="off">
+
+                <div class="grid">
+                    <div class="crop-patch" id="0">🌱</div>
+                    <div class="crop-patch" id="1">🌱</div>
+                    <div class="crop-patch" id="2">🌱</div>
+                    <div class="crop-patch" id="3">🌱</div>
+                    <div class="crop-patch" id="4">🌱</div>
+                    <div class="crop-patch" id="5">🌱</div>
+                    <div class="crop-patch" id="6">🌱</div>
+                    <div class="crop-patch" id="7">🌱</div>
+                    <div class="crop-patch" id="8">🌱</div>
                 </div>
+
+                <button id="start-btn">Initialize Sequence</button>
             </div>
         </main>
         <Footer />
 
         <script>
-            let attempts = 0;
-            const maxAttempts = 3;
-            const termOutput = document.getElementById('terminal-output');
-            const input = document.getElementById('password-input');
-            const container = document.getElementById('input-container');
-            const termWrapper = document.getElementById('terminal-wrapper');
+            const squares = document.querySelectorAll('.crop-patch');
+            const timeLeft = document.querySelector('#time-left');
+            const scoreDisplay = document.querySelector('#score');
+            const startBtn = document.querySelector('#start-btn');
 
-            // Force focus back to input if user clicks anywhere inside the terminal box
-            termWrapper?.addEventListener('click', () => input?.focus());
+            let result = 0;
+            let hitPosition = null;
+            let currentTime = 30;
+            let timerId = null;
+            let pestTimerId = null;
+            let isPlaying = false;
 
-            input?.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    attempts++;
-                    
-                    // Echo the prompt to mimic standard terminal behavior
-                    const promptEcho = document.createElement('div');
-                    promptEcho.textContent = "root@core-gateway's password:";
-                    termOutput.appendChild(promptEcho);
+            function randomSquare() {
+                squares.forEach(square => {
+                    square.classList.remove('pest-active');
+                    square.textContent = '🌱';
+                });
 
-                    if (attempts >= maxAttempts) {
-                        const customMsg = document.createElement('div');
-                        customMsg.className = 'custom-msg';
-                        customMsg.textContent = "fuck you nice try";
-                        termOutput.appendChild(customMsg);
-                        
-                        const closeMsg = document.createElement('div');
-                        closeMsg.textContent = "Connection closed by foreign host.";
-                        termOutput.appendChild(closeMsg);
-                        
-                        container.style.display = 'none';
-                    } else {
-                        const errorMsg = document.createElement('div');
-                        errorMsg.textContent = "Permission denied, please try again.";
-                        termOutput.appendChild(errorMsg);
+                let randomPosition = squares[Math.floor(Math.random() * 9)];
+                randomPosition.classList.add('pest-active');
+                randomPosition.textContent = '🐛';
+                hitPosition = randomPosition.id;
+            }
+
+            squares.forEach(square => {
+                square.addEventListener('mousedown', () => {
+                    if (square.id == hitPosition && isPlaying) {
+                        result++;
+                        scoreDisplay.textContent = result;
+                        hitPosition = null;
+                        square.textContent = '🎯';
+                        square.classList.remove('pest-active');
                     }
+                });
+            });
+
+            function movePest() {
+                pestTimerId = setInterval(randomSquare, 700);
+            }
+
+            function countDown() {
+                currentTime--;
+                if(timeLeft) timeLeft.textContent = currentTime.toString();
+
+                if (currentTime === 0) {
+                    clearInterval(timerId);
+                    clearInterval(pestTimerId);
+                    isPlaying = false;
+                    startBtn.disabled = false;
+                    startBtn.textContent = "Run Diagnostics Again";
                     
-                    // Reset input and scroll down
-                    if (input instanceof HTMLInputElement) {
-                        input.value = '';
-                    }
-                    termWrapper.scrollTop = termWrapper.scrollHeight;
+                    squares.forEach(square => {
+                        square.classList.remove('pest-active');
+                        square.textContent = '🌱';
+                    });
+                    
+                    alert(`Uplink terminated. Total successful scans: ${result}`);
                 }
+            }
+
+            startBtn?.addEventListener('click', () => {
+                if (isPlaying) return;
+                
+                // Reset stats
+                result = 0;
+                currentTime = 30;
+                scoreDisplay.textContent = result.toString();
+                timeLeft.textContent = currentTime.toString();
+                
+                isPlaying = true;
+                startBtn.disabled = true;
+                startBtn.textContent = "Sensors Active...";
+
+                movePest();
+                timerId = setInterval(countDown, 1000);
             });
         </script>
     </body>
