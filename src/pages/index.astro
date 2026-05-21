@@ -7,37 +7,100 @@ import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
 
 <!doctype html>
 <html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
-		<main>
-			<h1>🧑‍🚀 Hello, Astronaut!</h1>
-			<p>
-				Welcome to the official <a href="https://astro.build/">Astro</a> blog starter template. This
-				template serves as a lightweight, minimally-styled starting point for anyone looking to build
-				a personal website, blog, or portfolio with Astro.
-			</p>
-			<p>
-				This template comes with a few integrations already configured in your
-				<code>astro.config.mjs</code> file. You can customize your setup with
-				<a href="https://astro.build/integrations">Astro Integrations</a> to add tools like Tailwind,
-				React, or Vue to your project.
-			</p>
-			<p>Here are a few ideas on how to get started with the template:</p>
-			<p>
-				Have fun! If you get stuck, remember to <a href="https://docs.astro.build/"
-					>read the docs
-				</a> or <a href="https://astro.build/chat">join us on Discord</a> to ask questions.
-			</p>
-			<p>
-				Looking for a blog template with a bit more personality? Check out <a
-					href="https://github.com/Charca/astro-blog-template"
-					>astro-blog-template
-				</a> by <a href="https://twitter.com/Charca">Maxi Ferreira</a>.
-			</p>
-		</main>
-		<Footer />
-	</body>
+    <head>
+        <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+        <style>
+            .terminal-box {
+                background-color: #0c0c0c;
+                color: #cccccc;
+                font-family: 'Consolas', 'Courier New', monospace;
+                padding: 20px;
+                border-radius: 8px;
+                min-height: 350px;
+                font-size: 14px;
+                margin-top: 2rem;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+                overflow-y: auto;
+            }
+            .prompt-line { display: flex; }
+            .prompt { margin-right: 8px; }
+            .term-input {
+                background: transparent;
+                border: none;
+                color: transparent; /* Hides typing */
+                font-family: inherit;
+                font-size: inherit;
+                outline: none;
+                flex-grow: 1;
+            }
+            .term-input:focus { outline: none; }
+            .custom-msg { color: #f44747; margin-top: 10px; margin-bottom: 10px; }
+        </style>
+    </head>
+    <body>
+        <Header />
+        <main>
+            <h1>🧑‍🚀 System Gateway</h1>
+            <p>
+                Unauthorized access is strictly prohibited. Please authenticate to proceed to the administrative control panel.
+            </p>
+            
+            <div class="terminal-box" id="terminal-wrapper">
+                <div id="terminal-output">
+                    <div>SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.1</div>
+                </div>
+                <div class="prompt-line" id="input-container">
+                    <span class="prompt">root@core-gateway's password:</span>
+                    <input type="password" id="password-input" class="term-input" autofocus autocomplete="off">
+                </div>
+            </div>
+        </main>
+        <Footer />
+
+        <script>
+            let attempts = 0;
+            const maxAttempts = 3;
+            const termOutput = document.getElementById('terminal-output');
+            const input = document.getElementById('password-input');
+            const container = document.getElementById('input-container');
+            const termWrapper = document.getElementById('terminal-wrapper');
+
+            // Force focus back to input if user clicks anywhere inside the terminal box
+            termWrapper?.addEventListener('click', () => input?.focus());
+
+            input?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    attempts++;
+                    
+                    // Echo the prompt to mimic standard terminal behavior
+                    const promptEcho = document.createElement('div');
+                    promptEcho.textContent = "root@core-gateway's password:";
+                    termOutput.appendChild(promptEcho);
+
+                    if (attempts >= maxAttempts) {
+                        const customMsg = document.createElement('div');
+                        customMsg.className = 'custom-msg';
+                        customMsg.textContent = "fuck you nice try";
+                        termOutput.appendChild(customMsg);
+                        
+                        const closeMsg = document.createElement('div');
+                        closeMsg.textContent = "Connection closed by foreign host.";
+                        termOutput.appendChild(closeMsg);
+                        
+                        container.style.display = 'none';
+                    } else {
+                        const errorMsg = document.createElement('div');
+                        errorMsg.textContent = "Permission denied, please try again.";
+                        termOutput.appendChild(errorMsg);
+                    }
+                    
+                    // Reset input and scroll down
+                    if (input instanceof HTMLInputElement) {
+                        input.value = '';
+                    }
+                    termWrapper.scrollTop = termWrapper.scrollHeight;
+                }
+            });
+        </script>
+    </body>
 </html>
